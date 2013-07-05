@@ -14,10 +14,13 @@ class HttpNtlmAuth(AuthBase):
         """
         if ntlm is None:
             raise Exception("NTLM libraries unavailable")
+
         #parse the username
-        user_parts = username.split('\\', 1)
-        self.domain = user_parts[0].upper()
-        self.username = user_parts[1]
+        if '\\' in username:
+            self.domain, self.username = username.split('\\', 1)
+        else:
+            self.username = username
+            self.domain = None
 
         self.password = password
         self.adapter = HTTPAdapter()
@@ -33,7 +36,10 @@ class HttpNtlmAuth(AuthBase):
         
 
         # initial auth header with username. will result in challenge
-        auth = 'NTLM %s' % ntlm.create_NTLM_NEGOTIATE_MESSAGE("%s\\%s" % (self.domain,self.username))
+        if self.domain:
+            auth = 'NTLM %s' % ntlm.create_NTLM_NEGOTIATE_MESSAGE("%s\\%s" % (self.domain, self.username))
+        else:
+            auth = 'NTLM %s' % ntlm.create_NTLM_NEGOTIATE_MESSAGE("%s" % self.username)
         request.headers[auth_header] = auth
 
         # we must keep the connection because NTLM authenticates the connection, not single requests
